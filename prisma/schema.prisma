@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id
+  firstName     String?   @map("first_name")
+  lastName      String?   @map("last_name")
+  username      String    @unique
+  email         String?   @unique
+  imageUrl      String?   @map("image_url")
+  banned        Boolean   @default(false)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  lastSignInAt  DateTime? @map("last_sign_in_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  loginHistory  LoginHistory[]
+  wallets       Wallets[]
+  ccpaymentDeposits CcpaymentDeposits[]
+  @@map("users")
+}
+
+model LoginHistory {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  clientIp    String   @map("client_ip")
+  userAgent   String   @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("login_history")
+  @@index([userId])
+}
+
+enum Status {
+  active
+  deactive
+  maintenance
+}
+
+enum CoinStatus {
+  active
+  deactive
+  maintenance
+}
+
+enum CcpaymentStatus {
+  Success
+  Processing
+}
+
+enum CreditedStatus {
+  true
+  false
+}
+
+model Coins {
+  id               String     @id @default(cuid())
+  name             String
+  symbol           String     @unique
+  chainId          Int?       @map("chain_id")
+  price            Decimal    @db.Decimal(20, 8)
+  api              String?
+  allowedNetworks  Json?      @map("allowed_networks") // Array of allowed network chains
+  minimumDeposit   Decimal    @map("minimum_deposit") @db.Decimal(20, 8)
+  minimumWithdraw  Decimal    @map("minimum_withdraw") @db.Decimal(20, 8)
+  withdrawFee      Decimal    @map("withdraw_fee") @db.Decimal(20, 8)
+  coinStatus       CoinStatus @map("coin_status") @default(active)
+  depositStatus    CoinStatus @map("deposit_status") @default(active)
+  withdrawStatus   CoinStatus @map("withdraw_status") @default(active)
+  
+  // CCPayment API fields
+  ccPaymentCoinId  Int?       @map("ccpayment_coin_id")
+  coinFullName     String?    @map("coin_full_name")
+  logoUrl          String?    @map("logo_url")
+  
+  networks         Networks[] 
+  wallets          Wallets[]
+  ccpaymentDeposits CcpaymentDeposits[]
+
+  @@map("coins")
+}
+
+model Networks {
+  id                    String   @id @default(cuid())
+  coinId               String   @map("coin_id")
+  chain                String
+  chainFullName        String   @map("chain_full_name")
+  contract             String?
+  precision            Int
+  canDeposit           Boolean  @map("can_deposit") @default(true)
+  canWithdraw          Boolean  @map("can_withdraw") @default(true)
+  minimumDepositAmount Decimal  @map("minimum_deposit_amount") @db.Decimal(20, 8)
+  minimumWithdrawAmount Decimal @map("minimum_withdraw_amount") @db.Decimal(20, 8)
+  maximumWithdrawAmount Decimal @map("maximum_withdraw_amount") @db.Decimal(20, 8)
+  isSupportMemo        Boolean  @map("is_support_memo") @default(false)
+
+  coin                 Coins    @relation(fields: [coinId], references: [id], onDelete: Cascade)
+  walletAddresses      WalletAddresses[]
+
+  @@unique([coinId, chain])
+  @@map("networks")
+}
+
+model Wallets {
+  id        String   @id @default(cuid())
+  ownerId   String   @map("owner_id")
+  coinId    String   @map("coin_id")
+  balance   Decimal  @db.Decimal(20, 8) @default(0)
+
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  coin      Coins    @relation(fields: [coinId], references: [id], onDelete: Restrict)
+  addresses WalletAddresses[]
+
+  @@map("wallets")
+  @@unique([ownerId, coinId])
+  @@index([coinId])
+}
+
+model WalletAddresses {
+  id        String   @id @default(cuid())
+  walletId  String   @map("wallet_id")
+  networkId String   @map("network_id")
+  address   String
+  memo      String?
+
+  wallet    Wallets  @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  network   Networks @relation(fields: [networkId], references: [id], onDelete: Cascade)
+
+  @@unique([walletId, networkId])
+  @@map("wallet_addresses")
+}
+
+model CcpaymentDeposits {
+  id              String          @id @default(cuid())
+  recordId        String          @unique @map("record_id")
+  referenceId     String          @map("reference_id")
+  coinId          Int             @map("coin_id")
+  coinSymbol      String          @map("coin_symbol")
+  status          CcpaymentStatus
+  isFlaggedAsRisky Boolean        @default(false) @map("is_flagged_as_risky")
+  credited        CreditedStatus  @default(false)
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  // Relations
+  user            User            @relation(fields: [referenceId], references: [id])
+  coin            Coins           @relation(fields: [coinSymbol], references: [symbol])
+
+  @@map("ccpayment_deposits")
+  @@index([referenceId])
+  @@index([coinSymbol])
+}

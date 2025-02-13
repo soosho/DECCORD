@@ -1,0 +1,1 @@
+// This file can be removed as Clerk handles the state management
