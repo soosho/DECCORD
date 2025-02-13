@@ -1,12 +1,12 @@
 "use server"
 
 import { db } from "@/lib/db"
-import { auth } from "@clerk/nextjs"
+import { currentUser } from "@clerk/nextjs/server"
 
 export async function createMissingWallets() {
   try {
-    const { userId } = auth()
-    if (!userId) throw new Error("Unauthorized")
+    const user = await currentUser()
+    if (!user) throw new Error("Unauthorized")
 
     // Get all active coins
     const coins = await db.coins.findMany({
@@ -21,7 +21,7 @@ export async function createMissingWallets() {
     // Get user's existing wallets
     const existingWallets = await db.wallets.findMany({
       where: {
-        ownerId: userId
+        ownerId: user.id
       },
       select: {
         coinId: true
@@ -34,7 +34,7 @@ export async function createMissingWallets() {
     const walletsToCreate = coins
       .filter(coin => !existingCoinIds.has(coin.id))
       .map(coin => ({
-        ownerId: userId,
+        ownerId: user.id,
         coinId: coin.id,
         balance: 0
       }))

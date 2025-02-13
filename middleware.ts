@@ -1,59 +1,71 @@
-import { authMiddleware } from "@clerk/nextjs";
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from "next/server";
 
-const publicPaths = [
-  "/",
-  "/about",
-  "/contact",
-  "/pricing",
-  "/documentation",
-  "/api/webhooks/ccpayments"
-];
+// Update application URLs to match Clerk's expected paths
+const APP_URLS = {
+  signIn: '/sign-in',
+  signUp: '/sign-up',
+  dashboard: '/dashboard',
+} as const;
 
-const authPaths = [
-  "/(auth)/sign-in",
-  "/(auth)/sign-up",
-  "/(auth)/sign-out",
-];
+// Update auth route matchers to match new paths
+const isAuthRoute = createRouteMatcher([
+  '/sign-in(.*)',
+  '/sign-up(.*)'
+]);
 
-export default authMiddleware({
-  beforeAuth: (req) => {
-    // Allow webhook requests before auth check
+// Rest of your public routes remain the same
+const isPublicRoute = createRouteMatcher([
+  '/',
+  '/about',
+  '/contact',
+  '/pricing',
+  '/documentation',
+  '/api/webhooks/(.*)'
+]);
+
+export default clerkMiddleware(async (auth, req) => {
+  try {
+    // Handle webhook requests
     if (req.nextUrl.pathname.startsWith('/api/webhooks/')) {
       return NextResponse.next();
     }
-    return null;
-  },
-  publicRoutes: publicPaths,
-  ignoredRoutes: ["/api/webhooks/(.*)"],
-  afterAuth(auth, req) {
-    const { userId } = auth;
-    const { pathname } = req.nextUrl;
 
-    // Handle auth paths
-    const isAuthPath = authPaths.some(path => pathname.startsWith(path));
-    if (isAuthPath) {
-      if (userId) {
-        // If user is signed in and tries to access auth pages, redirect to dashboard
-        return NextResponse.redirect(new URL("/dashboard", req.url));
+    // Handle auth routes with updated paths
+    if (isAuthRoute(req)) {
+      const session = await auth();
+      if (session?.userId) {
+        return NextResponse.redirect(new URL(APP_URLS.dashboard, req.url));
       }
       return NextResponse.next();
     }
 
-    // Protected routes
-    if (!userId) {
-      const signInUrl = new URL("/(auth)/sign-in", req.url);
-      return NextResponse.redirect(signInUrl);
+    // Protect all non-public routes
+    if (!isPublicRoute(req)) {
+      try {
+        await auth.protect();
+      } catch (error) {
+        // Simplified redirect without redirect_url parameter
+        return NextResponse.redirect(new URL(APP_URLS.signIn, req.url));
+      }
     }
 
     return NextResponse.next();
-  },
+  } catch (error) {
+    console.error('Middleware error:', error);
+    if (error.clerk_digest?.includes('CLERK_PROTECT_REDIRECT_TO_SIGN_IN')) {
+      // Simplified redirect without redirect_url parameter
+      return NextResponse.redirect(new URL(APP_URLS.signIn, req.url));
+    }
+    return NextResponse.error();
+  }
+}, { 
+  debug: false
 });
 
 export const config = {
   matcher: [
-    "/((?!.*\\..*|_next).*)",
-    "/",
-    "/(api|trpc)(.*)"
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/(api|trpc)(.*)',
   ],
 };

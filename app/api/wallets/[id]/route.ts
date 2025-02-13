@@ -1,5 +1,5 @@
 import { db } from "@/lib/db"
-import { auth } from "@clerk/nextjs"
+import { currentUser } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
 
 export async function GET(
@@ -7,15 +7,15 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { userId } = auth()
-    if (!userId) {
+    const user = await currentUser()
+    if (!user) {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
     const wallet = await db.wallets.findFirst({
       where: {
         id: params.id,
-        ownerId: userId,
+        ownerId: user.id, // Using user.id from currentUser()
       },
       include: {
         coin: {

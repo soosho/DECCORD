@@ -1,7 +1,7 @@
 "use server"
 
 import { db } from "@/lib/db"
-import { auth } from "@clerk/nextjs"
+import { currentUser } from "@clerk/nextjs/server"
 import { CCPaymentClient } from "@/lib/ccpayments"
 import { revalidatePath } from "next/cache"
 
@@ -13,14 +13,14 @@ const ccpayment = new CCPaymentClient({
 
 export async function generateWalletAddress(walletId: string, networkId: string) {
   try {
-    const { userId } = auth()
-    if (!userId) throw new Error("Unauthorized")
+    const user = await currentUser()
+    if (!user) throw new Error("Unauthorized")
 
     // Enhanced wallet query to include network details
     const wallet = await db.wallets.findFirst({
       where: {
         id: walletId,
-        ownerId: userId,
+        ownerId: user.id,  // Updated to use user.id
       },
       include: {
         coin: true,
@@ -81,7 +81,7 @@ export async function generateWalletAddress(walletId: string, networkId: string)
 
     // Generate address only if network is allowed
     const response = await ccpayment.getOrCreateDepositAddress({
-      referenceId: userId,
+      referenceId: user.id,  // Updated to use user.id
       chain: network.chain // This will be one of ["ETH","BSC","TRX"]
     })
 

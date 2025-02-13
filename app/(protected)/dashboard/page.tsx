@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs"
+import { currentUser } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { StatCards } from "@/components/dashboard/stat-cards"
@@ -9,15 +9,15 @@ import { DashboardAdsTop } from "@/components/advertisements/dashboard-top"
 import { DashboardAdsBottom } from "@/components/advertisements/dashboard-bottom"
 
 export default async function Dashboard() {
-  const { userId } = auth()
+  const user = await currentUser()
   
-  if (!userId) {
+  if (!user) {
     redirect("/sign-in")
   }
 
   const wallets = await db.wallets.findMany({
     where: {
-      ownerId: userId,
+      ownerId: user.id,
     },
     include: {
       coin: true
