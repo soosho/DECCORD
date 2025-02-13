@@ -53,7 +53,7 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.next();
   } catch (error) {
     console.error('Middleware error:', error);
-    if (error.clerk_digest?.includes('CLERK_PROTECT_REDIRECT_TO_SIGN_IN')) {
+    if ((error as any).clerk_digest?.includes('CLERK_PROTECT_REDIRECT_TO_SIGN_IN')) {
       // Simplified redirect without redirect_url parameter
       return NextResponse.redirect(new URL(APP_URLS.signIn, req.url));
     }

@@ -4,18 +4,23 @@ import { NextResponse } from "next/server"
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await currentUser()
+    // Await both user and params
+    const [user, { id }] = await Promise.all([
+      currentUser(),
+      context.params
+    ])
+
     if (!user) {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
     const wallet = await db.wallets.findFirst({
       where: {
-        id: params.id,
-        ownerId: user.id, // Using user.id from currentUser()
+        id: id, // Using awaited params.id
+        ownerId: user.id,
       },
       include: {
         coin: {
