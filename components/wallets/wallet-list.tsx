@@ -80,15 +80,17 @@ function getUsdValue(balance: string, price: number): number {
   return parseFloat(balance) * price
 }
 
+// Update the WalletList props to include onWalletUpdate
 interface WalletListProps {
-  wallets: Wallet[]
+  wallets: LocalWallet[]
+  onWalletUpdate?: () => Promise<void>
 }
 
 // Remove generate address related code and simplify the actions column
 type SortField = 'price' | 'balance' | 'value'
 type SortDirection = 'asc' | 'desc'
 
-export function WalletList({ wallets: initialWallets }: { wallets: LocalWallet[] }) {
+export function WalletList({ wallets: initialWallets, onWalletUpdate }: WalletListProps) {
   // Change default value to true
   const [hideZeroBalance, setHideZeroBalance] = useState(true)
   const [mounted, setMounted] = useState(false)
@@ -428,6 +430,12 @@ export function WalletList({ wallets: initialWallets }: { wallets: LocalWallet[]
         isOpen={!!selectedWalletForSend}
         onClose={() => setSelectedWalletForSend(null)}
         wallet={selectedWalletForSend}
+        // Add this prop
+        onSuccess={async () => {
+          if (onWalletUpdate) {
+            await onWalletUpdate()
+          }
+        }}
       />
     </>
   )

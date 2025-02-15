@@ -6,28 +6,60 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ImageOff } from "lucide-react"
+import { ImageOff, Loader2 } from "lucide-react" // Add Loader2 to the import
 import Image from "next/image"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { formatBalance } from "@/lib/utils"
+import { withdrawToAddress } from "@/app/actions/wallets/withdraw"
+import { toast } from "sonner"
 
 interface SendModalProps {
   isOpen: boolean
   onClose: () => void
   wallet: LocalWallet | null
+  onSuccess?: () => Promise<void>
 }
 
-export function SendModal({ isOpen, onClose, wallet }: SendModalProps) {
+export function SendModal({ isOpen, onClose, wallet, onSuccess }: SendModalProps) {
   const [amount, setAmount] = useState("")
   const [address, setAddress] = useState("")
   const [network, setNetwork] = useState("")
   const [memo, setMemo] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   if (!wallet) return null
 
   const handleSend = async () => {
-    // TODO: Implement send logic
-    console.log("Sending transaction:", { amount, address, network, memo })
+    try {
+      setIsSubmitting(true)
+      
+      const selectedNetwork = wallet.coin.networks.find(n => n.chain === network)
+      if (!selectedNetwork) throw new Error("Network not selected")
+
+      const result = await withdrawToAddress({
+        walletId: wallet.id,
+        networkId: selectedNetwork.id,
+        address,
+        amount,
+        ...(memo && { memo }),
+      })
+
+      if (result.success) {
+        toast.success("Withdrawal request submitted")
+        // Call onSuccess before closing the modal
+        if (onSuccess) {
+          await onSuccess()
+        }
+        onClose()
+      } else {
+        toast.error(result.error || "Failed to process withdrawal")
+      }
+    } catch (error) {
+      toast.error("Failed to process withdrawal")
+      console.error("Withdrawal error:", error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const selectedNetwork = wallet.coin.networks.find(n => n.chain === network)
@@ -169,9 +201,16 @@ export function SendModal({ isOpen, onClose, wallet }: SendModalProps) {
           <Button 
             className="w-full" 
             onClick={handleSend}
-            disabled={!amount || !address || !network}
+            disabled={!amount || !address || !network || isSubmitting}
           >
-            Send {wallet.symbol}
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              `Send ${wallet.symbol}`
+            )}
           </Button>
         </div>
       </DialogContent>
