@@ -27,6 +27,7 @@ import { Wallet } from "@/types/wallet"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { SendModal } from "./send-modal"
 
 interface WalletNetwork {
   id: string
@@ -91,6 +92,7 @@ export function WalletList({ wallets: initialWallets }: { wallets: LocalWallet[]
   // Change default value to true
   const [hideZeroBalance, setHideZeroBalance] = useState(true)
   const [mounted, setMounted] = useState(false)
+  const [selectedWalletForSend, setSelectedWalletForSend] = useState<LocalWallet | null>(null)
   
   // Update the useEffect to use true as default
   useEffect(() => {
@@ -360,7 +362,11 @@ export function WalletList({ wallets: initialWallets }: { wallets: LocalWallet[]
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon">
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => setSelectedWalletForSend(wallet)}
+                      >
                         <Send className="h-4 w-4" />
                       </Button>
                     </div>
@@ -416,6 +422,12 @@ export function WalletList({ wallets: initialWallets }: { wallets: LocalWallet[]
         onClose={() => setSelectedWallet(null)}
         wallet={selectedWallet}
         onWalletUpdate={handleWalletUpdate}
+      />
+
+      <SendModal
+        isOpen={!!selectedWalletForSend}
+        onClose={() => setSelectedWalletForSend(null)}
+        wallet={selectedWalletForSend}
       />
     </>
   )
