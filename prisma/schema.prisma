@@ -22,6 +22,7 @@ model User {
   loginHistory  LoginHistory[]
   wallets       Wallets[]
   ccpaymentDeposits CcpaymentDeposits[]
+  depositHistory DepositHistory[]
   @@map("users")
 }
 
@@ -58,6 +59,13 @@ enum CcpaymentStatus {
 enum CreditedStatus {
   true
   false
+}
+
+// Add this enum for deposit status
+enum DepositStatus {
+  Success
+  Failed
+  Processing
 }
 
 model Coins {
@@ -156,4 +164,24 @@ model CcpaymentDeposits {
   @@map("ccpayment_deposits")
   @@index([referenceId])
   @@index([coinSymbol])
+}
+
+// Add this model after your existing models
+model DepositHistory {
+  id        String        @id @default(cuid())
+  userId    String        @map("user_id")
+  gateway   String
+  amount    Decimal       @db.Decimal(20, 8)
+  symbol    String
+  txid      String?
+  status    DepositStatus
+  date      DateTime      @default(now())
+
+  // Relation to User
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("deposit_history")
+  @@index([userId])
+  @@index([status])
+  @@index([symbol])
 }
