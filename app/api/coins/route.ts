@@ -11,14 +11,20 @@ export async function GET() {
 
     const coins = await db.coins.findMany({
       where: {
-        coinStatus: "active"
+        coinStatus: "active",
+        OR: [
+          { withdrawStatus: "active" },
+          { depositStatus: "active" }
+        ]
       },
       select: {
         id: true,
         name: true,
         symbol: true,
         logoUrl: true,
-        allowedNetworks: true // Include the allowedNetworks column
+        allowedNetworks: true,
+        withdrawStatus: true,
+        depositStatus: true
       }
     })
 
