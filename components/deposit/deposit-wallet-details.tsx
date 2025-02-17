@@ -114,7 +114,7 @@ export function DepositWalletDetails({ walletId, networks, addresses }: DepositW
                       <Alert variant="warning" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription>
-                          Memo is required for this deposit. Missing memo may result in lost funds.
+                          Memo is required for this deposit. Missing memo will result in lost funds.
                         </AlertDescription>
                       </Alert>
                       <div className="space-y-2">

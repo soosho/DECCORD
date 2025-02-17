@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation"
 import { DepositWalletDetails } from "@/components/deposit/deposit-wallet-details"
+import { FaucetPay } from "@/components/deposit/faucet-pay"
 import { db } from "@/lib/db"
 import { currentUser } from "@clerk/nextjs/server"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Image from "next/image"
 import { ImageOff } from "lucide-react"
 
@@ -75,6 +77,15 @@ export default async function DepositCoinPage({ params }: DepositPageProps) {
     notFound()
   }
 
+  // Check if coin is supported by FaucetPay
+  const FAUCETPAY_SUPPORTED_COINS = [
+    "BTC", "ETH", "DOGE", "LTC", "BCH", "DASH", "DGB", 
+    "TRX", "USDT", "FEY", "ZEC", "BNB", "SOL", "XRP", 
+    "POL", "ADA", "TON", "XLM", "USDC", "XMR", "TARA", 
+    "TRUMP", "PEPE"
+  ]
+  const isFaucetPaySupported = FAUCETPAY_SUPPORTED_COINS.includes(coin.symbol)
+
   return (
     <div className="container max-w-2xl mx-auto p-4">
       <Card className="border-none shadow-none">
@@ -104,12 +115,36 @@ export default async function DepositCoinPage({ params }: DepositPageProps) {
             </CardHeader>
           </Card>
 
-          {/* Deposit Details Card */}
-          <DepositWalletDetails 
-            walletId={wallet.id}
-            networks={wallet.coin.networks}
-            addresses={wallet.addresses}
-          />
+          {/* Deposit Methods Tabs */}
+          <Card>
+            <CardContent className="pt-6">
+              <Tabs defaultValue="direct" className="space-y-4">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="direct">Direct Deposit</TabsTrigger>
+                  {isFaucetPaySupported && (
+                    <TabsTrigger value="faucetpay">FaucetPay</TabsTrigger>
+                  )}
+                </TabsList>
+                
+                <TabsContent value="direct">
+                  <DepositWalletDetails 
+                    walletId={wallet.id}
+                    networks={wallet.coin.networks}
+                    addresses={wallet.addresses}
+                  />
+                </TabsContent>
+
+                {isFaucetPaySupported && (
+                  <TabsContent value="faucetpay">
+                    <FaucetPay 
+                      symbol={coin.symbol}
+                      userId={user.id}
+                    />
+                  </TabsContent>
+                )}
+              </Tabs>
+            </CardContent>
+          </Card>
 
           {/* Important Notes Card */}
           <Card>
